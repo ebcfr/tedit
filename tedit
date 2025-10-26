@@ -93,38 +93,38 @@ namespace eval tcl::mathfunc {
   proc atand {x} {expr {atan($x) * 180 / pi()}}
   # teach safe interpreter the new functions
   foreach function [info procs [namespace current]::*] {
-    $tEdit::safe alias $function $function
+    $::tEdit::safe alias $function $function
   }
   # use ln() instead of log()
-  $tEdit::safe alias [namespace current]::ln  [namespace current]::log
+  $::tEdit::safe alias [namespace current]::ln  [namespace current]::log
   # use log() instead of log10()
-  $tEdit::safe alias [namespace current]::log [namespace current]::log10
+  $::tEdit::safe alias [namespace current]::log [namespace current]::log10
 }
 
 ################################################################################
 # PROCEDURES
 #
 proc tEdit::Message {msg {timer 5000}} {
-  after cancel {set tEdit::message ""}
-  set tEdit::message $msg
-  after $timer {set tEdit::message ""}
+  after cancel {set ::tEdit::message ""}
+  set ::tEdit::message $msg
+  after $timer {set ::tEdit::message ""}
 }
 
 proc tEdit::RecentAdd {filename} {
-  if {$filename ni $tEdit::recent} {
-    lappend tEdit::recent $filename
+  if {$filename ni $::tEdit::recent} {
+    lappend ::tEdit::recent $filename
     .menu.file entryconfigure "Recent Files" -state normal
-    .menu.file.recent add command -label $filename -command [list tEdit::OpenFile $filename]
+    .menu.file.recent add command -label $filename -command [list ::tEdit::OpenFile $filename]
   }
 }
 
 proc tEdit::Modified {text} {
-  set tEdit::modified(text) [expr {[$text edit modified] ? "\u2022" : ""}]
+  set ::tEdit::modified(text) [expr {[$text edit modified] ? "\u2022" : ""}]
 }
 
 proc tEdit::NewTab {{position ""} {filename ""}} {
   set nb .nb
-  set tabnum $tEdit::tabnum
+  set tabnum $::tEdit::tabnum
   # set array for tabbed widgets
   array set tab [list \
     {tab}      "${nb}.tab${tabnum}"\
@@ -135,22 +135,22 @@ proc tEdit::NewTab {{position ""} {filename ""}} {
     {modified} "${nb}.tab${tabnum}.modified"\
   ]
   # set arrays specific to this tab
-  array set tEdit::filename [list $tab(tab) $filename]
-  array set tEdit::folds    [list $tab(text) [list]]
-  array set tEdit::marks    [list $tab(text) [list]]
-  array set tEdit::marknum  [list $tab(text) 0]
-  array set tEdit::modified [list $tab(text) ""]
+  array set ::tEdit::filename [list $tab(tab) $filename]
+  array set ::tEdit::folds    [list $tab(text) [list]]
+  array set ::tEdit::marks    [list $tab(text) [list]]
+  array set ::tEdit::marknum  [list $tab(text) 0]
+  array set ::tEdit::modified [list $tab(text) ""]
   # increase tab number for future use
-  incr tEdit::tabnum
+  incr ::tEdit::tabnum
 
   ttk::frame $tab(tab)
     tk::canvas $tab(canvas) -width 10 -highlightthickness 0 -background "#FFFF00"
     tk::text $tab(text) -relief sunken -highlightthickness 0 -takefocus 1 \
-      -font $tEdit::textfont -undo true -maxundo 0 -autoseparators true \
-      -insertunfocussed hollow -wrap $tEdit::wrap \
-      -tabstyle wordprocessor -tabs $tEdit::tabsize \
-      -blockcursor $tEdit::blockcursor -insertofftime $tEdit::blinkcursor \
-      -spacing1 $tEdit::spacing1 -spacing2 $tEdit::spacing2 -spacing3 $tEdit::spacing3 \
+      -font $::tEdit::textfont -undo true -maxundo 0 -autoseparators true \
+      -insertunfocussed hollow -wrap $::tEdit::wrap \
+      -tabstyle wordprocessor -tabs $::tEdit::tabsize \
+      -blockcursor $::tEdit::blockcursor -insertofftime $::tEdit::blinkcursor \
+      -spacing1 $::tEdit::spacing1 -spacing2 $::tEdit::spacing2 -spacing3 $::tEdit::spacing3 \
       -xscrollcommand [list $tab(xscroll) set] -yscrollcommand [list $tab(yscroll) set]
       # text tags management and starting colors
       $tab(text) tag configure tag_search     -foreground "#FFFF00" -background "#000000"
@@ -158,7 +158,7 @@ proc tEdit::NewTab {{position ""} {filename ""}} {
       $tab(text) tag raise tag_search tag_search_all
     ttk::scrollbar $tab(yscroll) -orient vertical   -command [list $tab(text) yview]
     ttk::scrollbar $tab(xscroll) -orient horizontal -command [list $tab(text) xview]
-    ttk::label $tab(modified) -textvariable tEdit::modified(text)
+    ttk::label $tab(modified) -textvariable ::tEdit::modified(text)
 
     grid $tab(canvas)   -in $tab(tab) -row 0 -column 0 -sticky ns
     grid $tab(text)     -in $tab(tab) -row 0 -column 1 -sticky nswe
@@ -174,28 +174,28 @@ proc tEdit::NewTab {{position ""} {filename ""}} {
   bind $tab(text) <Control-Tab> {return 0}
   # bindings for block selections
   bind Text <Control-ButtonPress-1> {
-    set tEdit::blockselect [list %x %y]
+    set ::tEdit::blockselect [list %x %y]
     %W mark set insert @%x,%y
     %W see insert
     break
   }
   bind $tab(text) <Control-Motion> {
-    if {$tEdit::blockselect ne ""} {
-      tEdit::BlockSelect %W %x %y
+    if {$::tEdit::blockselect ne ""} {
+      ::tEdit::BlockSelect %W %x %y
       %W mark set insert @%x,%y
       %W see insert
       break
     }
   }
   bind Text <Control-ButtonRelease-1> {
-    tEdit::BlockSelect %W %x %y
-    set tEdit::blockselect [list]
+    ::tEdit::BlockSelect %W %x %y
+    set ::tEdit::blockselect [list]
     break
   }
 
   if {$filename eq ""} {
-    set filename "Untitled $tEdit::untitlednum"
-    incr tEdit::untitlednum
+    set filename "Untitled $::tEdit::untitlednum"
+    incr ::tEdit::untitlednum
   } else {
     set filename [file tail $filename]
   }
@@ -206,7 +206,7 @@ proc tEdit::NewTab {{position ""} {filename ""}} {
     incr position
   }
   $nb insert $position $tab(tab) -text $filename
-  tEdit::TabOptions new $tab(tab)
+  ::tEdit::TabOptions new $tab(tab)
   $nb select $tab(tab)
   focus $tab(text)
   return $tab(text)
@@ -223,18 +223,18 @@ proc tEdit::CloseTab {tab {nb ".nb"}} {
 
 proc tEdit::OpenFileDialog {} {
   set filenames [tk_getOpenFile -title "Open File" -parent . \
-    -filetypes $tEdit::filetypes -multiple true]
+    -filetypes $::tEdit::filetypes -multiple true]
   if {$filenames eq ""} {return 2}
   foreach filename $filenames {
-    tEdit::OpenFile $filename
+    ::tEdit::OpenFile $filename
   }
 }
 
 proc tEdit::OpenFile {filename} {
   foreach tab [.nb tabs] {
-    if {$filename eq $tEdit::filename($tab)} {
+    if {$filename eq $::tEdit::filename($tab)} {
       .nb select $tab
-      tEdit::Message "[file tail $filename] already open"
+      ::tEdit::Message "[file tail $filename] already open"
       return 1
     }
   }
@@ -247,7 +247,7 @@ proc tEdit::OpenFile {filename} {
   }
   if {[catch {set data [open $filename r]} msg]} {
     puts stderr $msg
-    tEdit::Message [lindex [split $msg ":"] 1]
+    ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
   chan configure $data -translation auto
@@ -258,7 +258,7 @@ proc tEdit::OpenFile {filename} {
   $text see insert
   $text edit modified 0
   $text edit reset
-  tEdit::RecentAdd $filename
+  ::tEdit::RecentAdd $filename
 }
 
 proc tEdit::GetPipedData {} {
@@ -276,14 +276,14 @@ proc tEdit::GetPipedData {} {
 
 proc tEdit::StoreFilename {filename} {
   set tab [.nb select]
-  set tEdit::filename($tab) $filename
+  set ::tEdit::filename($tab) $filename
   .nb tab $tab -text [file tail $filename]
 }
 
 proc tEdit::SaveFileDialog {} {
   set tabname [.nb tab [.nb select] -text]
   set filename [tk_getSaveFile -title "Save As" -parent . \
-    -filetypes $tEdit::filetypes -initialfile $tabname]
+    -filetypes $::tEdit::filetypes -initialfile $tabname]
   if {$filename eq ""} {return 2}
   if {[file exists $filename]} {
     if {[file type $filename] ne "file"} {
@@ -300,37 +300,37 @@ proc tEdit::SaveFileDialog {} {
       return 1
     }
   }
-  set tEdit::savename $filename
+  set ::tEdit::savename $filename
   return 0
 }
 
 proc tEdit::SaveFile {filename text} {
   if {$filename eq ""} {
     if {[tEdit::SaveFileDialog] == 0} {
-      set filename $tEdit::savename
+      set filename $::tEdit::savename
     } else {
       return 2
     }
   }
   if {[catch {set data [open $filename w]} msg]} {
     puts stderr $msg
-    tEdit::Message [lindex [split $msg ":"] 1]
+    ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
   chan puts -nonewline $data [$text get 0.0 end]
   chan flush $data
   chan close $data
   $text edit modified 0
-  tEdit::StoreFilename $filename
-  tEdit::RecentAdd $filename
-  tEdit::Message "[file tail $filename] saved"
-  set tEdit::filepath [file nativename $filename]
+  ::tEdit::StoreFilename $filename
+  ::tEdit::RecentAdd $filename
+  ::tEdit::Message "[file tail $filename] saved"
+  set ::tEdit::filepath [file nativename $filename]
   return 0
 }
 
 proc tEdit::SaveAs {text} {
   if {[tEdit::SaveFileDialog] == 0} {
-    tEdit::SaveFile $tEdit::savename $text
+    ::tEdit::SaveFile $::tEdit::savename $text
   }
 }
 
@@ -341,14 +341,14 @@ proc tEdit::AskSave {tab text} {
       -message "[.nb tab $tab -text] has changed!" -detail "Save changes?"]
     switch -- $answer {
       yes {
-        if {$tEdit::filename($tab) eq ""} {
+        if {$::tEdit::filename($tab) eq ""} {
           if {[tEdit::SaveFileDialog] == 0} {
-            return [tEdit::SaveFile $tEdit::savename $text]
+            return [tEdit::SaveFile $::tEdit::savename $text]
           } else {
             return 2
           }
         } else {
-          return [tEdit::SaveFile $tEdit::filename($tab) $text]
+          return [tEdit::SaveFile $::tEdit::filename($tab) $text]
         }
       }
       no {return 0}
@@ -378,7 +378,7 @@ proc tEdit::UndoStack {text} {
 
 proc tEdit::UndoRedo {text action} {
   if {[catch {$text edit $action} msg]} {
-    tEdit::Message $msg
+    ::tEdit::Message $msg
   }
 }
 
@@ -391,7 +391,7 @@ proc tEdit::PopulateBrowser {node {tree ".tree"}} {
   set path [$tree set $node fullpath]
   $tree delete [$tree children $node]
   if {[catch {glob -nocomplain -directory $path *} msg]} {
-    tEdit::Message [lindex [split $msg ":"] 1]
+    ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
   foreach f [lsort -dictionary [glob -nocomplain -directory $path *]] {
@@ -407,7 +407,7 @@ proc tEdit::PopulateBrowser {node {tree ".tree"}} {
 
 proc tEdit::StartBrowser {{tree ".tree"}} {
   foreach dir [lsort -dictionary [file volumes]] {
-    tEdit::PopulateBrowser [$tree insert {} end -text $dir \
+    ::tEdit::PopulateBrowser [$tree insert {} end -text $dir \
       -values [list $dir directory]] $tree
   }
 }
@@ -415,9 +415,9 @@ proc tEdit::StartBrowser {{tree ".tree"}} {
 proc tEdit::OpenFileBrowser {node {tree ".tree"}} {
   if {$node eq ""} {return 2}
   if {[$tree set $node type] eq "directory"} {
-    tEdit::PopulateBrowser $node $tree
+    ::tEdit::PopulateBrowser $node $tree
   } else {
-    tEdit::OpenFile [$tree set $node fullpath]
+    ::tEdit::OpenFile [$tree set $node fullpath]
   }
 }
 
@@ -450,19 +450,19 @@ proc tEdit::Copy {text action} {
     set data [string trimright $data "\n"]
     clipboard clear
     clipboard append -type STRING -- $data
-    set tEdit::blockpaste "true"
+    set ::tEdit::blockpaste "true"
   } else {
     if {$action eq "Cut"} {
       tk_textCut $text
     } else {
       tk_textCopy $text
     }
-    set tEdit::blockpaste "false"
+    set ::tEdit::blockpaste "false"
   }
 }
 
 proc tEdit::Paste {text} {
-  if {$tEdit::blockpaste eq "true"} {
+  if {$::tEdit::blockpaste eq "true"} {
     set type [expr {[tk windowingsystem] eq "x11" ? "UTF8_STRING" : "STRING"}]
     set data [split [clipboard get -type $type] "\n"]
     set cursor [$text index insert]
@@ -492,8 +492,8 @@ proc tEdit::Paste {text} {
 
 proc tEdit::BlockSelect {text x2 y2} {
   selection clear
-  set x1 [lindex $tEdit::blockselect 0]
-  set y1 [lindex $tEdit::blockselect 1]
+  set x1 [lindex $::tEdit::blockselect 0]
+  set y1 [lindex $::tEdit::blockselect 1]
   if {$x1 > $x2} {set x $x2;set endx $x1} else {set x $x1;set endx $x2}
   if {$y1 > $y2} {set y $y2;set endy $y1} else {set y $y1;set endy $y2}
   while {$y <= $endy} {
@@ -517,8 +517,8 @@ proc tEdit::DeleteSelection {text key} {
 }
 
 proc tEdit::BlockIndent {text action} {
-  if {$tEdit::softtabs eq "true"} {
-    set indent [string repeat " " $tEdit::tabsize]
+  if {$::tEdit::softtabs eq "true"} {
+    set indent [string repeat " " $::tEdit::tabsize]
   } else {
     set indent "\t"
   }
@@ -541,7 +541,7 @@ proc tEdit::BlockIndent {text action} {
       foreach {first last} $blockindent {
         $text insert $first $indent
       }
-      tEdit::Message "increased indentation"
+      ::tEdit::Message "increased indentation"
     }
     decrease {
       set indent [string length $indent]
@@ -557,9 +557,9 @@ proc tEdit::BlockIndent {text action} {
         }
       }
       if {$whitespace eq ""} {
-        tEdit::Message "cannot decrease further"
+        ::tEdit::Message "cannot decrease further"
       } else {
-        tEdit::Message "decreased indentation"
+        ::tEdit::Message "decreased indentation"
       }
     }
     default {
@@ -569,7 +569,7 @@ proc tEdit::BlockIndent {text action} {
 }
 
 proc tEdit::AutoIndent {text} {
-  if {$tEdit::autoindent eq "true"} {
+  if {$::tEdit::autoindent eq "true"} {
     bind $text <Return> {
       # find any whitespace at the start of the current line
       set first [%W index "insert linestart"]
@@ -600,12 +600,12 @@ proc tEdit::Calculate {text} {
   }
   set math [$text get $first $last]
   try {
-    $tEdit::safe eval [list expr [string map {/ *1.0/} $math]]
+    $::tEdit::safe eval [list expr [string map {/ *1.0/} $math]]
   } on error msg {
-    tEdit::Message [lindex [split $msg "\n"] 0]
+    ::tEdit::Message [lindex [split $msg "\n"] 0]
   } on ok result {
     # round to user defined decimal points
-    set result [expr {precision($result,$tEdit::precision)}]
+    set result [expr {precision($result,$::tEdit::precision)}]
     # avoid printing extra decimal zeros
     set result0 [expr {round($result)}]
     if {$result0 == $result} {
@@ -617,7 +617,7 @@ proc tEdit::Calculate {text} {
 
 proc tEdit::Fold {text} {
   if {[set selected [$text tag ranges sel]] eq ""} {
-    tEdit::Message "select lines to fold"
+    ::tEdit::Message "select lines to fold"
     return 1
   }
   set first [$text index "sel.first linestart"]
@@ -626,12 +626,12 @@ proc tEdit::Fold {text} {
   set dfirst [expr {int($first)}]
   set dlast [expr {int($last)}]
   if {[set foldsum [expr {($dlast - $dfirst) + 1}]] == 1} {
-    tEdit::Message "cannot fold a single line"
+    ::tEdit::Message "cannot fold a single line"
     return 1
   }
   # check if any older folds exist in current selection
   # and unfold them
-  foreach old $tEdit::folds($text) {
+  foreach old $::tEdit::folds($text) {
     set oldtag [$text tag ranges $old]
     set oldfirst [lindex $oldtag 0]
     set oldlast [lindex $oldtag end]
@@ -643,16 +643,16 @@ proc tEdit::Fold {text} {
   set buttontext "\u25b6\u25b6 $foldsum lines: [$text get $first $firsteol]"
   set fold [string cat $text ".fold" $dfirst "-" $dlast]
   tk::button $fold -text $buttontext -relief flat -padx 0 -pady 0 \
-    -takefocus 0 -cursor "hand2" -font $tEdit::textfont \
+    -takefocus 0 -cursor "hand2" -font $::tEdit::textfont \
     -background [$text cget -background] \
     -foreground [$text cget -foreground] \
-    -command [list tEdit::Unfold $text $fold $first]
+    -command [list ::tEdit::Unfold $text $fold $first]
   $text tag add $fold $first $last
   $text tag configure $fold -elide true
   $text window create $first -window $fold
   $text mark set insert "$last +1 lines"
   selection clear
-  lappend tEdit::folds($text) $fold
+  lappend ::tEdit::folds($text) $fold
   .menu.edit entryconfigure "Unfold All" -state normal
 }
 
@@ -661,7 +661,7 @@ proc tEdit::Unfold {text fold {index ""}} {
   set modified [$text edit modified]
   switch -- $fold {
     all {
-      foreach fold $tEdit::folds($text) {
+      foreach fold $::tEdit::folds($text) {
         $fold invoke
       }
     }
@@ -672,20 +672,20 @@ proc tEdit::Unfold {text fold {index ""}} {
       destroy $fold
       # delete the extra index which held the button
       $text delete $index
-      set tEdit::folds($text) \
-        [lsearch -inline -all -not -exact $tEdit::folds($text) $fold]
+      set ::tEdit::folds($text) \
+        [lsearch -inline -all -not -exact $::tEdit::folds($text) $fold]
     }
   }
   # restore modified flag ('$text delete $index' modifies $text)
   $text edit modified $modified
-  if {[llength $tEdit::folds($text)] == 0} {
+  if {[llength $::tEdit::folds($text)] == 0} {
     .menu.edit entryconfigure "Unfold All" -state disabled
   }
 }
 
 proc tEdit::Search {what {direction "nextrange"}} {
-  if {$what ni $tEdit::hsearch} {
-    lappend tEdit::hsearch $what
+  if {$what ni $::tEdit::hsearch} {
+    lappend ::tEdit::hsearch $what
   }
   if {[tEdit::SearchAll $what] == 1} {return 1}
   set text "[.nb select].text"
@@ -707,7 +707,7 @@ proc tEdit::Search {what {direction "nextrange"}} {
   if {$tagsearch eq ""}  {
     set tagsearch [lrange $taglist {*}$loop]
   }
-  tEdit::ClearHighlight "tag_search"
+  ::tEdit::ClearHighlight "tag_search"
   $text tag add tag_search {*}$tagsearch
   $text mark set insert tag_search.first
   $text see tag_search.first
@@ -715,12 +715,12 @@ proc tEdit::Search {what {direction "nextrange"}} {
   set count [lsearch -exact $taglist [lindex $tagsearch 0]]
   set count [expr {($count / 2) + 1}]
   set matches [expr {$sum == 1 ? "match" : "matches"}]
-  tEdit::Message "$count of $sum $matches"
+  ::tEdit::Message "$count of $sum $matches"
 }
 
 proc tEdit::SearchAll {what} {
   if {$what eq ""} {
-    tEdit::Message "nothing to search for"
+    ::tEdit::Message "nothing to search for"
     return 1
   }
   set text "[.nb select].text"
@@ -733,17 +733,17 @@ proc tEdit::SearchAll {what} {
     set last "end"
   }
   set length 0
-  set search_cmd [list $text search $tEdit::regexp -all -count length -- $what $first $last]
+  set search_cmd [list $text search $::tEdit::regexp -all -count length -- $what $first $last]
   if {[catch {set taglist [{*}$search_cmd]} msg]} {
     .cbsearch configure -style error.TCombobox
-    tEdit::Message [lindex [split $msg ":"] 1]
+    ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   } elseif {$taglist eq ""} {
     .cbsearch configure -style error.TCombobox
-    tEdit::Message "no matches found"
+    ::tEdit::Message "no matches found"
     return 1
   } else {
-    tEdit::ClearHighlight "tag_search_all"
+    ::tEdit::ClearHighlight "tag_search_all"
     .cbsearch configure -style valid.TCombobox
     set count 0
     foreach first $taglist {
@@ -755,18 +755,18 @@ proc tEdit::SearchAll {what} {
 }
 
 proc tEdit::Replace {what with} {
-  if {$with ni $tEdit::hreplace} {
-    lappend tEdit::hreplace $with
+  if {$with ni $::tEdit::hreplace} {
+    lappend ::tEdit::hreplace $with
   }
   if {$what eq $with} {
-    tEdit::Message "search and replace are same"
+    ::tEdit::Message "search and replace are same"
     return 1
   }
   set text "[.nb select].text"
   # if tag_search is empty, search for the first time
   if {[set taglist [$text tag ranges tag_search]] eq ""} {
     if {[tEdit::Search $what] == 1} {
-      tEdit::Message "nothing to replace"
+      ::tEdit::Message "nothing to replace"
       return 1
     }
     # recreate $taglist after search
@@ -774,19 +774,19 @@ proc tEdit::Replace {what with} {
   }
   $text edit separator
   $text replace {*}$taglist $with
-  tEdit::Search $what
+  ::tEdit::Search $what
 }
 
 proc tEdit::ReplaceAll {what with} {
-  if {$with ni $tEdit::hreplace} {
-    lappend tEdit::hreplace $with
+  if {$with ni $::tEdit::hreplace} {
+    lappend ::tEdit::hreplace $with
   }
   if {$what eq $with} {
-    tEdit::Message "search and replace are same"
+    ::tEdit::Message "search and replace are same"
     return 1
   }
   if {[tEdit::SearchAll $what] == 1} {
-    tEdit::Message "nothing to replace"
+    ::tEdit::Message "nothing to replace"
     return 1
   }
   set text "[.nb select].text"
@@ -797,7 +797,7 @@ proc tEdit::ReplaceAll {what with} {
     $text replace $first $last $with
     incr count
   }
-  tEdit::Message "replace finished: $count substitutions"
+  ::tEdit::Message "replace finished: $count substitutions"
 }
 
 proc tEdit::ClearHighlight {tags} {
@@ -816,20 +816,20 @@ proc tEdit::MarkToggle {} {
   set mark [lsearch -inline -all -glob [$text tag names $first] "Mark#*"]
   if {$mark eq ""} {
     if {[$text get $first $last] eq ""} {
-      tEdit::Message "cannot mark: empty line"
+      ::tEdit::Message "cannot mark: empty line"
       return 1
     }
-    set mark "Mark#[incr tEdit::marknum($text)]"
+    set mark "Mark#[incr ::tEdit::marknum($text)]"
     $text mark set $mark $first
     $text tag configure $mark -underline true
     $text tag raise $mark sel
     $text tag add $mark $first $last
-    lappend tEdit::marks($text) $mark
+    lappend ::tEdit::marks($text) $mark
     foreach item {"Next Mark" "Clear Marks"} {
       .menu.marks entryconfigure $item -state normal
     }
   } else {
-    tEdit::MarkDelete $mark
+    ::tEdit::MarkDelete $mark
   }
 }
 
@@ -843,16 +843,16 @@ proc tEdit::MarkSee {mark} {
 
 proc tEdit::MarkNext {markbox} {
   set text "[.nb select].text"
-  if {[llength $tEdit::marks($text)] == 0} {
-    tEdit::Message "no marks found"
+  if {[llength $::tEdit::marks($text)] == 0} {
+    ::tEdit::Message "no marks found"
     return 1
   }
   set mark [$text mark next "insert +1 indices"]
-  while {$mark ni $tEdit::marks($text)} {
+  while {$mark ni $::tEdit::marks($text)} {
     if {$mark eq ""} {set mark 0.0}
     set mark [$text mark next $mark]
   }
-  set index [lsearch -exact $tEdit::marks($text) $mark]
+  set index [lsearch -exact $::tEdit::marks($text) $mark]
   $markbox selection clear 0 end
   $markbox selection set $index
   $markbox activate $index
@@ -865,12 +865,12 @@ proc tEdit::MarkDelete {which} {
   set markbox .marks
   switch -- $which {
     all {
-      foreach mark $tEdit::marks($text) {
+      foreach mark $::tEdit::marks($text) {
         $text mark unset $mark
         $text tag delete $mark
       }
-      set tEdit::marks($text) [list]
-      set tEdit::marknum($text) 0
+      set ::tEdit::marks($text) [list]
+      set ::tEdit::marknum($text) 0
     }
     active {
       set mark [$markbox get active]
@@ -881,10 +881,10 @@ proc tEdit::MarkDelete {which} {
     default {
       $text mark unset $which
       $text tag delete $which
-      $markbox delete [lsearch -exact $tEdit::marks($text) $which]
+      $markbox delete [lsearch -exact $::tEdit::marks($text) $which]
     }
   }
-  if {[llength $tEdit::marks($text)] == 0} {
+  if {[llength $::tEdit::marks($text)] == 0} {
     foreach item {"Next Mark" "Clear Marks"} {
       .menu.marks entryconfigure $item -state disabled
     }
@@ -894,18 +894,18 @@ proc tEdit::MarkDelete {which} {
 proc tEdit::GotoLine {text line} {
   if {$line eq ""} {return 1}
   # $line is always digit, from combobox validation
-  if {$line ni $tEdit::hgoto} {
-    lappend tEdit::hgoto $line
+  if {$line ni $::tEdit::hgoto} {
+    lappend ::tEdit::hgoto $line
   }
   if {$line <= [$text index "end -1 indices"]} {
     set mark "${line}.0"
     $text mark set insert $mark
     $text see $mark
     .cbgoto configure -style valid.TCombobox
-    tEdit::Message "gone to line $line"
+    ::tEdit::Message "gone to line $line"
   } else {
     .cbgoto configure -style error.TCombobox
-    tEdit::Message "line $line does not exist"
+    ::tEdit::Message "line $line does not exist"
   }
 }
 
@@ -913,7 +913,7 @@ proc tEdit::LineNumbers {text canvas args} {
   set checklist "configure delete insert see yview"
   # canvas font don't need italics, underline or overstrike
   # family and size are enough
-  set font [lrange $tEdit::textfont 0 1]
+  set font [lrange $::tEdit::textfont 0 1]
   # check only for items in checklist and elide tags
   # $args == 0 when opening a file
   if {[llength $args] == 0 || [lindex $args 0 1] in $checklist \
@@ -924,12 +924,12 @@ proc tEdit::LineNumbers {text canvas args} {
       set dline [$text dlineinfo $i]
       if {[llength $dline] == 0} {break}
       set height [lindex $dline 3]
-      set y [expr {[lindex $dline 1] + $tEdit::spacing1}]
+      set y [expr {[lindex $dline 1] + $::tEdit::spacing1}]
       set linenum [lindex [split $i "."] 0]
       if {$linenum > 999} {
-        set width [expr {[font measure $tEdit::textfont $linenum] + 5}]
+        set width [expr {[font measure $::tEdit::textfont $linenum] + 5}]
       } else {
-        set width [expr {[font measure $tEdit::textfont "000"] + 5}]
+        set width [expr {[font measure $::tEdit::textfont "000"] + 5}]
       }
       $canvas configure -width $width
       $canvas create text 2 $y -anchor nw -text $linenum \
@@ -941,14 +941,14 @@ proc tEdit::LineNumbers {text canvas args} {
 
 proc tEdit::ToggleLineNumbers {text canvas show} {
   if {$show eq "true"} {
-    bind $text <Configure> [list tEdit::LineNumbers $text $canvas]
+    bind $text <Configure> [list ::tEdit::LineNumbers $text $canvas]
     if {[trace info execution $text] eq ""} {
-      trace add execution $text leave [list tEdit::LineNumbers $text $canvas]
+      trace add execution $text leave [list ::tEdit::LineNumbers $text $canvas]
     }
     grid $canvas
   } else {
     bind $text <Configure> {return 0}
-    trace remove execution $text leave [list tEdit::LineNumbers $text $canvas]
+    trace remove execution $text leave [list ::tEdit::LineNumbers $text $canvas]
     grid remove $canvas
   }
 }
@@ -972,27 +972,27 @@ proc tEdit::ToggleView {widget show} {
 }
 
 proc tEdit::ToggleSoftTabs {text} {
-  if {$tEdit::softtabs eq "true"} {
-    set tabstring [string repeat " " $tEdit::tabsize]
+  if {$::tEdit::softtabs eq "true"} {
+    set tabstring [string repeat " " $::tEdit::tabsize]
   } else {
     set tabstring "\t"
   }
   bind $text <Tab> [list $text insert insert $tabstring]
-  tEdit::ConfigureTabSize $text
+  ::tEdit::ConfigureTabSize $text
 }
 
 proc tEdit::ConfigureTabSize {text} {
-  $text configure -tabs "[expr {$tEdit::tabsize * [font measure $tEdit::textfont 0]}] left"
+  $text configure -tabs "[expr {$::tEdit::tabsize * [font measure $::tEdit::textfont 0]}] left"
 }
 
 proc tEdit::SetFont {font} {
-  set tEdit::textfont $font
+  set ::tEdit::textfont $font
   foreach tab [.nb tabs] {
     set text "${tab}.text"
     $text configure -font $font
-    tEdit::ConfigureTabSize $text
-    if {$tEdit::folds($text) ne ""} {
-      foreach fold $tEdit::folds($text) {
+    ::tEdit::ConfigureTabSize $text
+    if {$::tEdit::folds($text) ne ""} {
+      foreach fold $::tEdit::folds($text) {
         $fold configure -font $font
       }
     }
@@ -1023,8 +1023,8 @@ proc tEdit::ColorScheme {text canvas colorscheme} {
   $text configure -insertbackground $color(fg)
   $text tag configure tag_search -foreground $color(hl) -background $color(fg)
   $text tag configure tag_search_all -foreground $color(fg) -background $color(hl)
-  if {$tEdit::folds($text) ne ""} {
-    foreach fold $tEdit::folds($text) {
+  if {$::tEdit::folds($text) ne ""} {
+    foreach fold $::tEdit::folds($text) {
       $fold configure -background $color(bg)
       $fold configure -foreground $color(fg)
     }
@@ -1044,7 +1044,7 @@ proc tEdit::Base64Encode {} {
   }
   if {[catch {set data [open $filename r]} msg]} {
     puts stderr $msg
-    tEdit::Message [lindex [split $msg ":"] 1]
+    ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
   chan configure $data -translation binary
@@ -1056,35 +1056,35 @@ proc tEdit::Base64Encode {} {
   $text see insert
   $text edit modified 0
   $text edit reset
-  tEdit::Message "Encoding finished"
+  ::tEdit::Message "Encoding finished"
 }
 
 proc tEdit::TabOptions {arg {tab ""}} {
   if {$arg eq "new" && $tab ne ""} {
     set text "${tab}.text"
     set canvas "${tab}.canvas"
-    tEdit::ToggleLineNumbers $text $canvas $tEdit::linenumbers
-    tEdit::ToggleView "${tab}.yscroll" $tEdit::showyscroll
-    tEdit::ToggleView "${tab}.xscroll" $tEdit::showxscroll
-    tEdit::AutoIndent $text
-    tEdit::ColorScheme $text $canvas $tEdit::colorscheme
-    tEdit::ToggleSoftTabs $text
+    ::tEdit::ToggleLineNumbers $text $canvas $::tEdit::linenumbers
+    ::tEdit::ToggleView "${tab}.yscroll" $::tEdit::showyscroll
+    ::tEdit::ToggleView "${tab}.xscroll" $::tEdit::showxscroll
+    ::tEdit::AutoIndent $text
+    ::tEdit::ColorScheme $text $canvas $::tEdit::colorscheme
+    ::tEdit::ToggleSoftTabs $text
   } else {
     foreach tab [.nb tabs] {
       set text "${tab}.text"
       set canvas "${tab}.canvas"
       switch -- $arg {
-        LineNumbers {tEdit::ToggleLineNumbers $text $canvas $tEdit::linenumbers}
-        YScroll     {tEdit::ToggleView "${tab}.yscroll" $tEdit::showyscroll}
-        XScroll     {tEdit::ToggleView "${tab}.xscroll" $tEdit::showxscroll}
+        LineNumbers {tEdit::ToggleLineNumbers $text $canvas $::tEdit::linenumbers}
+        YScroll     {tEdit::ToggleView "${tab}.yscroll" $::tEdit::showyscroll}
+        XScroll     {tEdit::ToggleView "${tab}.xscroll" $::tEdit::showxscroll}
         Indent      {tEdit::AutoIndent $text}
-        WordWrap    {$text configure -wrap $tEdit::wrap}
-        BlinkCursor {$text configure -insertofftime $tEdit::blinkcursor}
-        BlockCursor {$text configure -blockcursor $tEdit::blockcursor}
-        Spacing1    {$text configure -spacing1 $tEdit::spacing1}
-        Spacing2    {$text configure -spacing2 $tEdit::spacing2}
-        Spacing3    {$text configure -spacing3 $tEdit::spacing3}
-        ColorScheme {tEdit::ColorScheme $text $canvas $tEdit::colorscheme}
+        WordWrap    {$text configure -wrap $::tEdit::wrap}
+        BlinkCursor {$text configure -insertofftime $::tEdit::blinkcursor}
+        BlockCursor {$text configure -blockcursor $::tEdit::blockcursor}
+        Spacing1    {$text configure -spacing1 $::tEdit::spacing1}
+        Spacing2    {$text configure -spacing2 $::tEdit::spacing2}
+        Spacing3    {$text configure -spacing3 $::tEdit::spacing3}
+        ColorScheme {tEdit::ColorScheme $text $canvas $::tEdit::colorscheme}
         TabKey      {tEdit::ToggleSoftTabs $text}
         default     {return 1}
       }
@@ -1095,19 +1095,19 @@ proc tEdit::TabOptions {arg {tab ""}} {
 proc tEdit::FocusTab {tab} {
   wm title . "tEdit - [.nb tab $tab -text]"
   # remove any leftover message
-  set tEdit::message ""
-  set tEdit::filepath [file nativename $tEdit::filename($tab)]
+  set ::tEdit::message ""
+  set ::tEdit::filepath [file nativename $::tEdit::filename($tab)]
   set text "${tab}.text"
-  tEdit::UndoStack $text
-  tEdit::Modified $text
+  ::tEdit::UndoStack $text
+  ::tEdit::Modified $text
   # set "Unfold all" menu state
   .menu.edit entryconfigure "Unfold All" \
-    -state [expr {$tEdit::folds($text) eq "" ? "disabled" : "normal"}]
+    -state [expr {$::tEdit::folds($text) eq "" ? "disabled" : "normal"}]
   # set "Next Mark" & "Clear Marks" menu state
-  .marks configure -listvariable tEdit::marks($text)
+  .marks configure -listvariable ::tEdit::marks($text)
   foreach item {"Next Mark" "Clear Marks"} {
     .menu.marks entryconfigure $item \
-      -state [expr {$tEdit::marks($text) eq "" ? "disabled" : "normal"}]
+      -state [expr {$::tEdit::marks($text) eq "" ? "disabled" : "normal"}]
   }
 }
 
@@ -1115,11 +1115,11 @@ proc tEdit::TabsMenu {W x y X Y} {
   .menutabs.goto delete 0 end
   .menutabs delete 0 2
   .menutabs insert 0 command -label "New Tab" -underline 4 \
-    -command [list tEdit::NewTab [lindex [$W index @${x},${y}]]]
+    -command [list ::tEdit::NewTab [lindex [$W index @${x},${y}]]]
   .menutabs insert 1 command -label "Close Tab" -underline 0 \
-    -command [list tEdit::CloseTab [lindex [$W tabs] [$W index @${x},${y}]]]
+    -command [list ::tEdit::CloseTab [lindex [$W tabs] [$W index @${x},${y}]]]
   .menutabs insert 2 command -label "Close Others" -underline 6 \
-    -command [list tEdit::CloseAll [lindex [$W tabs] [$W index @${x},${y}]]]
+    -command [list ::tEdit::CloseAll [lindex [$W tabs] [$W index @${x},${y}]]]
   foreach tabid [$W tabs] {
     set tabname [$W tab $tabid -text]
     .menutabs.goto add command -label $tabname -command [list $W select $tabid]
@@ -1140,15 +1140,15 @@ proc tEdit::PrevTab {{nb ".nb"}} {
 }
 
 proc tEdit::DnD::DragDelay {W x y X Y} {
-  set tEdit::DnD::timer [list tEdit::DnD::DragTab $W $x $y $X $Y]
-  after 200 $tEdit::DnD::timer
+  set ::tEdit::DnD::timer [list ::tEdit::DnD::DragTab $W $x $y $X $Y]
+  after 200 $::tEdit::DnD::timer
 }
 
 proc tEdit::DnD::DragTab {W x y X Y} {
-  set tEdit::DnD::timer ""
-  set tEdit::DnD::start [$W index @$x,$y]
+  set ::tEdit::DnD::timer ""
+  set ::tEdit::DnD::start [$W index @$x,$y]
   # check for a valid start
-  if {[string is integer -strict $tEdit::DnD::start]} {
+  if {[string is integer -strict $::tEdit::DnD::start]} {
     # create window to show when drag
     set tabid [lindex [$W tabs] [$W index @$x,$y]]
     set tabtext [$W tab $tabid -text]
@@ -1167,12 +1167,12 @@ proc tEdit::DnD::DragTab {W x y X Y} {
 
 proc tEdit::DnD::DropTab {W x y} {
   focus [.nb select].text
-  if {$tEdit::DnD::timer ne ""} {
-    after cancel $tEdit::DnD::timer
+  if {$::tEdit::DnD::timer ne ""} {
+    after cancel $::tEdit::DnD::timer
     return 0
   }
   $W configure -cursor "left_ptr"
-  set from $tEdit::DnD::start
+  set from $::tEdit::DnD::start
   # check for a valid source
   if {[string is integer -strict $from]} {
     set to [$W index @$x,$y]
@@ -1182,7 +1182,7 @@ proc tEdit::DnD::DropTab {W x y} {
       $W insert $to $tab
     }
   }
-  set tEdit::DnD::start ""
+  set ::tEdit::DnD::start ""
   bind $W <Motion> {return 0}
   destroy .dnd
 }
@@ -1200,7 +1200,7 @@ proc tEdit::DnD::MoveTab {W x y X Y} {
 proc tEdit::DnD::CancelDnD {W} {
   if {[winfo exists .dnd]} {
     $W configure -cursor "left_ptr"
-    set tEdit::DnD::start ""
+    set ::tEdit::DnD::start ""
     bind $W <Motion> {return 0}
     destroy .dnd
   }
@@ -1248,7 +1248,7 @@ proc tEdit::Menus {} {
       -accelerator "Ctrl+O" -command {tEdit::OpenFileDialog}
     .menu.file add command -label "Save" -underline 0 \
       -accelerator "Ctrl+S" \
-      -command {tEdit::SaveFile $tEdit::filename([.nb select]) [.nb select].text}
+      -command {tEdit::SaveFile $::tEdit::filename([.nb select]) [.nb select].text}
     .menu.file add command -label "Save As..." -underline 5 \
       -accelerator "Ctrl+Shift+S" -command {tEdit::SaveAs [.nb select].text}
     .menu.file add separator
@@ -1293,20 +1293,20 @@ proc tEdit::Menus {} {
   .menu add cascade -label "Search" -underline 0 -menu [menu .menu.search]
     .menu.search add checkbutton -label "Show Search" -underline 0 \
       -accelerator "Ctrl+F" \
-      -variable tEdit::showsearch -onvalue "true" -offvalue "false" \
-      -command {tEdit::ToggleView .fsearch $tEdit::showsearch}
+      -variable ::tEdit::showsearch -onvalue "true" -offvalue "false" \
+      -command {tEdit::ToggleView .fsearch $::tEdit::showsearch}
     .menu.search add command -label "Find Next" -underline 5 \
-      -accelerator "F3" -command {tEdit::Search $tEdit::search "nextrange"}
+      -accelerator "F3" -command {tEdit::Search $::tEdit::search "nextrange"}
     .menu.search add command -label "Find Prev" -underline 5 \
-      -accelerator "Shift+F3" -command {tEdit::Search $tEdit::search "prevrange"}
+      -accelerator "Shift+F3" -command {tEdit::Search $::tEdit::search "prevrange"}
     .menu.search add command -label "Clear Highlight" -underline 0 \
       -accelerator "Ctrl+L" \
       -command {tEdit::ClearHighlight "tag_search tag_search_all"}
   .menu add cascade -label "Marks" -underline 0 -menu [menu .menu.marks]
     .menu.marks add checkbutton -label "Show Marks" -underline 0 \
       -accelerator "Shift+F5" \
-      -variable tEdit::showmarks -onvalue "true" -offvalue "false" \
-      -command {tEdit::ToggleView .fmarks $tEdit::showmarks}
+      -variable ::tEdit::showmarks -onvalue "true" -offvalue "false" \
+      -command {tEdit::ToggleView .fmarks $::tEdit::showmarks}
     .menu.marks add command -label "Mark Toggle" -underline 0 \
       -accelerator "Ctrl+M" -command {tEdit::MarkToggle}
     .menu.marks add command -label "Next Mark" -underline 0 \
@@ -1316,54 +1316,54 @@ proc tEdit::Menus {} {
   .menu add cascade -label "Show" -underline 3 -menu [menu .menu.show]
     .menu.show add checkbutton -label "File Browser" -underline 0 \
       -accelerator "F2" \
-      -variable tEdit::browser -onvalue "true" -offvalue "false" \
-      -command {tEdit::ToggleBrowser $tEdit::browser}
+      -variable ::tEdit::browser -onvalue "true" -offvalue "false" \
+      -command {tEdit::ToggleBrowser $::tEdit::browser}
     .menu.show add separator
     .menu.show add checkbutton -label "Line Numbers" -underline 5 \
-      -variable tEdit::linenumbers -onvalue "true" -offvalue "false" \
+      -variable ::tEdit::linenumbers -onvalue "true" -offvalue "false" \
       -command {tEdit::TabOptions "LineNumbers"}
     .menu.show add separator
     .menu.show add checkbutton -label "Menu Bar" -underline 0 \
-      -variable tEdit::showmenu -onvalue ".menu" -offvalue "" \
-      -command {. configure -menu $tEdit::showmenu}
+      -variable ::tEdit::showmenu -onvalue ".menu" -offvalue "" \
+      -command {. configure -menu $::tEdit::showmenu}
     .menu.show add checkbutton -label "Status Bar" -underline 7 \
-      -variable tEdit::showstatus -onvalue "true" -offvalue "false" \
-      -command {tEdit::ToggleView .statusbar $tEdit::showstatus}
+      -variable ::tEdit::showstatus -onvalue "true" -offvalue "false" \
+      -command {tEdit::ToggleView .statusbar $::tEdit::showstatus}
     .menu.show add checkbutton -label "Vertical Scrollbar" -underline 0 \
-      -variable tEdit::showyscroll -onvalue "true" -offvalue "false" \
+      -variable ::tEdit::showyscroll -onvalue "true" -offvalue "false" \
       -command {tEdit::TabOptions "YScroll"}
     .menu.show add checkbutton -label "Horizontal Scrollbar" -underline 0 \
-      -variable tEdit::showxscroll -onvalue "true" -offvalue "false" \
+      -variable ::tEdit::showxscroll -onvalue "true" -offvalue "false" \
       -command {tEdit::TabOptions "XScroll"}
     .menu.show add separator
     .menu.show add checkbutton -label "Go to line" -underline 0 \
       -accelerator "Ctrl+G" \
-      -variable tEdit::showgoto -onvalue "true" -offvalue "false" \
-      -command {tEdit::ToggleView .fgoto $tEdit::showgoto}
+      -variable ::tEdit::showgoto -onvalue "true" -offvalue "false" \
+      -command {tEdit::ToggleView .fgoto $::tEdit::showgoto}
   .menu add cascade -label "Options" -underline 0 -menu [menu .menu.options]
     .menu.options add checkbutton -label "On Top" -underline 0 \
-      -variable tEdit::ontop -onvalue "true" -offvalue "false" \
-      -command {wm attributes . -topmost $tEdit::ontop}
+      -variable ::tEdit::ontop -onvalue "true" -offvalue "false" \
+      -command {wm attributes . -topmost $::tEdit::ontop}
     .menu.options add separator
     .menu.options add cascade -label "Precision" -underline 0 \
       -menu [menu .menu.options.precision]
       for {set i 0} {$i <= 15} {incr i} {
         .menu.options.precision add radiobutton -label $i \
-          -variable tEdit::precision -value $i
+          -variable ::tEdit::precision -value $i
       }
     .menu.options add separator
     .menu.options add checkbutton -label "Autoindent" -underline 0 \
-      -variable tEdit::autoindent -onvalue "true" -offvalue "false" \
+      -variable ::tEdit::autoindent -onvalue "true" -offvalue "false" \
       -command {tEdit::TabOptions "Indent"}
     .menu.options add checkbutton -label "Word Wrap" -underline 5 \
-      -variable tEdit::wrap -onvalue "word" -offvalue "none" \
+      -variable ::tEdit::wrap -onvalue "word" -offvalue "none" \
       -command {tEdit::TabOptions "WordWrap"}
     .menu.options add separator
     .menu.options add checkbutton -label "Blink Cursor" -underline 0 \
-      -variable tEdit::blinkcursor -onvalue "500" -offvalue "0" \
+      -variable ::tEdit::blinkcursor -onvalue "500" -offvalue "0" \
       -command {tEdit::TabOptions "BlinkCursor"}
     .menu.options add checkbutton -label "Block Cursor" -underline 4 \
-      -variable tEdit::blockcursor -onvalue "true" -offvalue "false" \
+      -variable ::tEdit::blockcursor -onvalue "true" -offvalue "false" \
       -command {tEdit::TabOptions "BlockCursor"}
     .menu.options add separator
     .menu.options add command -label "Select Font..." -underline 7 \
@@ -1374,21 +1374,21 @@ proc tEdit::Menus {} {
         -menu [menu .menu.options.spacing.1]
         for {set i 0} {$i <= 9} {incr i} {
           .menu.options.spacing.1 add radiobutton -label $i -underline 0 \
-            -variable tEdit::spacing1 -value $i \
+            -variable ::tEdit::spacing1 -value $i \
             -command {tEdit::TabOptions "Spacing1"}
         }
       .menu.options.spacing add cascade -label "Below Lines" -underline 0 \
         -menu [menu .menu.options.spacing.3]
         for {set i 0} {$i <= 9} {incr i} {
           .menu.options.spacing.3 add radiobutton -label $i -underline 0 \
-            -variable tEdit::spacing3 -value $i \
+            -variable ::tEdit::spacing3 -value $i \
             -command {tEdit::TabOptions "Spacing3"}
         }
       .menu.options.spacing add cascade -label "Between Wraps" -underline 8 \
         -menu [menu .menu.options.spacing.2]
         for {set i 0} {$i <= 9} {incr i} {
           .menu.options.spacing.2 add radiobutton -label $i -underline 0 \
-            -variable tEdit::spacing2 -value $i \
+            -variable ::tEdit::spacing2 -value $i \
             -command {tEdit::TabOptions "Spacing2"}
         }
     .menu.options add separator
@@ -1396,14 +1396,14 @@ proc tEdit::Menus {} {
       -menu [menu .menu.options.themes]
       foreach theme [ttk::style theme names] {
         .menu.options.themes add radiobutton -label $theme \
-          -variable tEdit::theme -value $theme \
+          -variable ::tEdit::theme -value $theme \
           -command [list ttk::style theme use $theme]
       }
     .menu.options add cascade -label "Colorscheme" -underline 0 \
       -menu [menu .menu.options.colorscheme]
       foreach colorscheme {amber black blue brownsugar default gray green salmon sugar} {
         .menu.options.colorscheme add radiobutton -label $colorscheme \
-          -variable tEdit::colorscheme -value $colorscheme \
+          -variable ::tEdit::colorscheme -value $colorscheme \
           -command {tEdit::TabOptions "ColorScheme"}
       }
     .menu.options add separator
@@ -1411,18 +1411,18 @@ proc tEdit::Menus {} {
       -menu [menu .menu.options.tabsize]
       foreach i [list 2 4 6 7 8] {
         .menu.options.tabsize add radiobutton -label $i -underline 0 \
-          -variable tEdit::tabsize -value $i \
+          -variable ::tEdit::tabsize -value $i \
           -command {tEdit::TabOptions "TabKey"}
       }
     .menu.options add checkbutton -label "Soft Tabs" -underline 0 \
-      -variable tEdit::softtabs -onvalue "true" -offvalue "false" \
+      -variable ::tEdit::softtabs -onvalue "true" -offvalue "false" \
       -command {tEdit::TabOptions "TabKey"}
   .menu add cascade -label "Help" -underline 0 -menu [menu .menu.help]
     .menu.help add command -label "System..." -underline 0 \
       -command {tEdit::SystemDetails}
     .menu.help add separator
     .menu.help add command -label "About tEdit..." -underline 0 \
-      -accelerator "F1" -command {tEdit::About $tEdit::version}
+      -accelerator "F1" -command {tEdit::About $::tEdit::version}
 
   # popup menu for managing tabs
   # dummy labels will be replaced after tEdit::TabsMenu proc
@@ -1493,12 +1493,12 @@ proc tEdit::Widgets {} {
   ttk::frame .fgoto -borderwidth 1 -relief flat
     ttk::label .lgoto -relief flat -text "Go to line:"
     ttk::combobox .cbgoto -takefocus 0 -style valid.TCombobox \
-      -textvariable tEdit::goto -values $tEdit::hgoto \
+      -textvariable ::tEdit::goto -values $::tEdit::hgoto \
       -validate key -validatecommand {string is digit %P} \
-      -postcommand {.cbgoto configure -values $tEdit::hgoto}
+      -postcommand {.cbgoto configure -values $::tEdit::hgoto}
     tk::button .bgoto -text "Go" -width 3 -padx 0 -pady 0 \
       -underline 0 -takefocus 0 \
-      -command {tEdit::GotoLine [.nb select].text $tEdit::goto}
+      -command {tEdit::GotoLine [.nb select].text $::tEdit::goto}
     grid .lgoto  -in .fgoto -row 0 -column 0 -sticky w
     grid .cbgoto -in .fgoto -row 0 -column 1 -sticky w
     grid .bgoto  -in .fgoto -row 0 -column 2 -sticky w
@@ -1506,8 +1506,8 @@ proc tEdit::Widgets {} {
   ttk::frame .fsearch -borderwidth 1 -relief sunken
     ttk::labelframe .lfsearch -borderwidth 1 -relief flat -text "Search for:"
       ttk::combobox .cbsearch -takefocus 0 -style valid.TCombobox \
-        -textvariable tEdit::search -values $tEdit::hsearch \
-        -postcommand {.cbsearch configure -values $tEdit::hsearch}
+        -textvariable ::tEdit::search -values $::tEdit::hsearch \
+        -postcommand {.cbsearch configure -values $::tEdit::hsearch}
       ttk::button .bfindnext -text "Find Next" -width 9 \
         -underline 5 -takefocus 0 \
         -command {.menu.search invoke "Find Next"}
@@ -1515,15 +1515,15 @@ proc tEdit::Widgets {} {
         -underline 5 -takefocus 0 \
         -command {.menu.search invoke "Find Prev"}
       ttk::radiobutton .rbnocase -text "Ignore Case" \
-        -underline 7 -takefocus 0 -variable tEdit::regexp -value "-nocase"
+        -underline 7 -takefocus 0 -variable ::tEdit::regexp -value "-nocase"
       ttk::radiobutton .rbexact -text "Exact" \
-        -underline 1 -takefocus 0 -variable tEdit::regexp -value "-exact"
+        -underline 1 -takefocus 0 -variable ::tEdit::regexp -value "-exact"
       ttk::radiobutton .rbregexp -text "Regular Expression" \
-        -underline 8 -takefocus 0 -variable tEdit::regexp -value "-regexp"
+        -underline 8 -takefocus 0 -variable ::tEdit::regexp -value "-regexp"
       ttk::checkbutton .ckreplace -text "Replace" \
         -underline 0 -takefocus 0 \
-        -variable tEdit::showreplace -onvalue "true" -offvalue "false" \
-        -command {tEdit::ToggleView .lfreplace $tEdit::showreplace}
+        -variable ::tEdit::showreplace -onvalue "true" -offvalue "false" \
+        -command {tEdit::ToggleView .lfreplace $::tEdit::showreplace}
       # grid them in the search labelframe
       grid .cbsearch  -in .lfsearch -row 0 -column 0 -sticky we
       grid .bfindnext -in .lfsearch -row 0 -column 1 -sticky w
@@ -1536,14 +1536,14 @@ proc tEdit::Widgets {} {
 
     ttk::labelframe .lfreplace -borderwidth 1 -relief flat -text "Replace with:"
       ttk::combobox .cbreplace -takefocus 0 -style valid.TCombobox \
-        -textvariable tEdit::replace -values $tEdit::hreplace \
-        -postcommand {.cbreplace configure -values $tEdit::hreplace}
+        -textvariable ::tEdit::replace -values $::tEdit::hreplace \
+        -postcommand {.cbreplace configure -values $::tEdit::hreplace}
       ttk::button .breplace -text "Replace" -width 9 \
         -underline 0 -takefocus 0 \
-        -command {tEdit::Replace $tEdit::search $tEdit::replace}
+        -command {tEdit::Replace $::tEdit::search $::tEdit::replace}
       ttk::button .breplaceall -text "All" -width 9 \
         -underline 0 -takefocus 0 \
-        -command {tEdit::ReplaceAll $tEdit::search $tEdit::replace}
+        -command {tEdit::ReplaceAll $::tEdit::search $::tEdit::replace}
         # grid them in the replace labelframe
         grid .cbreplace   -in .lfreplace -row 0 -column 0 -sticky we
         grid .breplace    -in .lfreplace -row 0 -column 1 -sticky w
@@ -1556,9 +1556,9 @@ proc tEdit::Widgets {} {
       grid remove .lfreplace
 
   ttk::frame .statusbar -borderwidth 1 -relief sunken
-    ttk::label .filepath -relief flat -anchor w -textvariable tEdit::filepath
-    ttk::label .message  -relief flat -anchor c -textvariable tEdit::message
-    ttk::label .encoding -relief flat -anchor e -textvariable tEdit::encoding
+    ttk::label .filepath -relief flat -anchor w -textvariable ::tEdit::filepath
+    ttk::label .message  -relief flat -anchor c -textvariable ::tEdit::message
+    ttk::label .encoding -relief flat -anchor e -textvariable ::tEdit::encoding
     ttk::sizegrip .sizegrip
     grid .filepath -in .statusbar -row 0 -column 0 -sticky w
     grid .message  -in .statusbar -row 0 -column 1 -sticky we
@@ -1701,7 +1701,7 @@ tEdit::StartBrowser
 wm title    . "tEdit"
 wm minsize  . 460 300
 wm protocol . WM_DELETE_WINDOW {.menu.file invoke "Close All"}
-wm attributes . -topmost $tEdit::ontop
+wm attributes . -topmost $::tEdit::ontop
 
 ################################################################################
 # COMMAND LINE
