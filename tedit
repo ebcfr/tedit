@@ -153,7 +153,7 @@ namespace eval Modal {
 proc Modal::ask_for_encoding {{initial_enc utf-8}} {
   # build the dialog
   toplevel .encmodal
-  
+  wm title .encmodal "Encoding"
   set ::Modal::value $initial_enc
   
   ## Create the menubutton menu
@@ -343,24 +343,13 @@ proc tEdit::OpenFile {filename} {
     ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
-#  set ::tEdit::encoding [encoding system]
-#  if {[catch {set data [chan read $fid]} msg]} {
-#    # fallback to iso8859-1
-#    chan seek $fid 0
-#    chan configure $fid -encoding iso8859-1
-#    if {[catch {set data [chan read $fid]} msg]} {
-#      chan close $fid
-#      return 1
-#    }
-#    set enc "iso8859-1"
-#  }
-  if {[catch {set data [chan read $fid]} msg]} {
+  if {[catch {set data [chan read -nonewline $fid]} msg]} {
     # can't read! ask for the encoding to be used
     set enc [Modal::ask_for_encoding [encoding system]]
     if {$enc != [encoding system]} {
       chan seek $fid 0
       chan configure $fid -encoding iso8859-1
-      if {[catch {set data [chan read $fid]} msg]} {
+      if {[catch {set data [chan read -nonewline $fid]} msg]} {
         chan close $fid
         return 1
       }
@@ -1203,6 +1192,7 @@ proc tEdit::TabOptions {arg {tab ""}} {
         Spacing2    {$text configure -spacing2 $::tEdit::spacing2}
         Spacing3    {$text configure -spacing3 $::tEdit::spacing3}
         ColorScheme {tEdit::ColorScheme $text $canvas $::tEdit::colorscheme}
+        Encoding	{set ::tEdit::enc($text) $::tEdit::encoding; $text edit modified 1; tEdit::Modified $text}
         TabKey      {tEdit::ToggleSoftTabs $text}
         default     {return 1}
       }
@@ -1524,6 +1514,17 @@ proc tEdit::Menus {} {
         .menu.options.colorscheme add radiobutton -label $colorscheme \
           -variable ::tEdit::colorscheme -value $colorscheme \
           -command {tEdit::TabOptions "ColorScheme"}
+      }
+    .menu.options add separator
+    .menu.options add cascade -label "Encoding" -underline 0 \
+      -menu [menu .menu.options.encodings]
+      set dobreak [expr {[tk windowingsystem] ne "aqua"}]
+      ## Populate the menu with the available encodings
+      set i 0
+      foreach enc [lsort -dictionary [encoding names]] {
+        .menu.options.encodings add radiobutton -label $enc -variable ::tEdit::encoding \
+          -value $enc -command {tEdit::TabOptions "Encoding"} -columnbreak [expr (($i % 20) == 0) && $dobreak]
+        incr i
       }
     .menu.options add separator
     .menu.options add cascade -label "Tab Size" -underline 0 \

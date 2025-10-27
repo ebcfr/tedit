@@ -30,6 +30,7 @@
 * Line Spacing (above/below lines and wraps)
 * Base64 Encoder
 * Command Line Support
+* Load and save a file using encoding map different from the system and allow modifying the encoding used
 * Runs in GNU/Linux, [Microsoft Windows](#for-microsoft-windows-users) and Unix (MacOS not tested)
 
 ----
