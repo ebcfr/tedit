@@ -2,7 +2,7 @@
 
 package require Tk
 # force utf-8 encoding (freewrap workaround)
-if {[encoding system] ne "utf-8"} {encoding system "utf-8"}
+# if {[encoding system] ne "utf-8"} {encoding system "utf-8"}
 
 ################################################################################
 # VARIABLES
@@ -13,6 +13,7 @@ namespace eval tEdit {
   array set marks      {}
   array set marknum    {}
   array set modified   {}
+  array set enc        {}
 
   variable version     {1.7.11}
   variable safe        [interp create -safe]
@@ -102,6 +103,94 @@ namespace eval tcl::mathfunc {
 }
 
 ################################################################################
+# MODAL ENCODING DIALOG
+#
+# Modal::show win ?-onclose script? ?-destroy bool?
+#
+# Displays $win as a modal dialog. 
+#
+# If -destroy is true then $win is destroyed when the dialog is closed. 
+# Otherwise the caller must do it. 
+#
+# If an -onclose script is provided, it is executed if the user terminates the 
+# dialog through the window manager (such as clicking on the [X] button on the 
+# window decoration), and the result of that script is returned. The default 
+# script does nothing and returns an empty string. 
+#
+# Otherwise, the dialog terminates when the global ::Modal.Result is set to a 
+# value. 
+#
+# This proc doesn't play nice if you try to have more than one modal dialog 
+# active at a time. (Don't do that anyway!)
+#
+# Examples:
+#   -onclose {return cancel}    -->    Show.Modal returns the word 'cancel'
+#   -onclose {list 1 2 3}       -->    Show.Modal returns the list {1 2 3}
+#   -onclose {set ::x zap!}     -->    (variations on a theme)
+#
+namespace eval Modal {
+	variable value
+	variable result
+	
+	proc show {win args} {
+		set ::Modal::result {}
+		array set options [list -onclose {} -destroy 0 {*}$args]
+		wm transient $win .
+		wm protocol $win WM_DELETE_WINDOW [list catch $options(-onclose) ::Modal.Result]
+		set x [expr {([winfo width  .] - [winfo reqwidth  $win]) / 2 + [winfo rootx .]}]
+		set y [expr {([winfo height .] - [winfo reqheight $win]) / 2 + [winfo rooty .]}]
+		wm geometry $win +$x+$y
+		raise $win
+		focus $win
+		grab $win
+		tkwait variable ::Modal::result
+		grab release $win
+		if {$options(-destroy)} {destroy $win}
+		return $::Modal::result
+	}
+}
+
+proc Modal::ask_for_encoding {{initial_enc utf-8}} {
+  # build the dialog
+  toplevel .encmodal
+  
+  set ::Modal::value $initial_enc
+  
+  ## Create the menubutton menu
+  set mnu [menu .encmodal.menu -tearoff 0]
+
+  ## If we are running in Aqua, don't perform the column break
+  set dobreak [expr {[tk windowingsystem] ne "aqua"}]
+
+  ## Populate the menu with the available encodings
+  set i 0
+  foreach enc [lsort -dictionary [encoding names]] {
+    $mnu add radiobutton -label $enc -variable ::Modal::value \
+      -value $enc -columnbreak [expr (($i % 20) == 0) && $dobreak]
+    incr i
+  }
+ 
+  ttk::label  .encmodal.line1 -text "Encoding is not ${initial_enc}!"
+  ttk::label  .encmodal.line2 -text "Choose another one: "
+  ttk::menubutton .encmodal.mnubtn -menu $mnu -textvariable ::Modal::value
+  ttk::button .encmodal.ok  -text "Choose it" -command {set ::Modal::result $::Modal::value}
+  ttk::button .encmodal.nok -text "Cancel" -command [list set ::Modal::result $initial_enc]
+  
+  grid  .encmodal.line1  -row 0 -column 0 -columnspan 2 -sticky we
+  grid  .encmodal.line2  -row 1 -column 0
+  grid  .encmodal.mnubtn -row 1 -column 1 -sticky we
+  grid  .encmodal.ok     -row 2 -column 0 -sticky we
+  grid  .encmodal.nok    -row 2 -column 1 -sticky we
+  
+  focus .encmodal.mnubtn
+  bind  .encmodal <Return> {set ::Modal::result $::Modal::value}
+  bind  .encmodal <Escape> [list set ::Modal::result $initial_enc]
+  
+  # run the dialog
+  return [Modal::show .encmodal -destroy 1 -onclose [list set ::Modal::result $initial_enc]]
+}
+
+################################################################################
 # PROCEDURES
 #
 proc tEdit::Message {msg {timer 5000}} {
@@ -122,7 +211,7 @@ proc tEdit::Modified {text} {
   set ::tEdit::modified(text) [expr {[$text edit modified] ? "\u2022" : ""}]
 }
 
-proc tEdit::NewTab {{position ""} {filename ""}} {
+proc tEdit::NewTab {{position ""} {filename ""} {enc utf-8}} {
   set nb .nb
   set tabnum $::tEdit::tabnum
   # set array for tabbed widgets
@@ -140,6 +229,8 @@ proc tEdit::NewTab {{position ""} {filename ""}} {
   array set ::tEdit::marks    [list $tab(text) [list]]
   array set ::tEdit::marknum  [list $tab(text) 0]
   array set ::tEdit::modified [list $tab(text) ""]
+  array set ::tEdit::enc      [list $tab(text) $enc]
+  
   # increase tab number for future use
   incr ::tEdit::tabnum
 
@@ -199,6 +290,7 @@ proc tEdit::NewTab {{position ""} {filename ""}} {
   } else {
     set filename [file tail $filename]
   }
+  
   # where to insert new tab
   if {$position eq "" || ($position + 1) >= [$nb index end]} {
     set position end
@@ -231,6 +323,7 @@ proc tEdit::OpenFileDialog {} {
 }
 
 proc tEdit::OpenFile {filename} {
+  set enc [encoding system]
   foreach tab [.nb tabs] {
     if {$filename eq $::tEdit::filename($tab)} {
       .nb select $tab
@@ -245,15 +338,39 @@ proc tEdit::OpenFile {filename} {
       -detail "${filename}\nis a [file type $filename]."
     return 1
   }
-  if {[catch {set data [open $filename r]} msg]} {
+  if {[catch {set fid [open $filename r]} msg]} {
     puts stderr $msg
     ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
-  chan configure $data -translation auto
-  set text [tEdit::NewTab [.nb index current] $filename]
-  $text insert end [chan read -nonewline $data]
-  chan close $data
+#  set ::tEdit::encoding [encoding system]
+#  if {[catch {set data [chan read $fid]} msg]} {
+#    # fallback to iso8859-1
+#    chan seek $fid 0
+#    chan configure $fid -encoding iso8859-1
+#    if {[catch {set data [chan read $fid]} msg]} {
+#      chan close $fid
+#      return 1
+#    }
+#    set enc "iso8859-1"
+#  }
+  if {[catch {set data [chan read $fid]} msg]} {
+    # can't read! ask for the encoding to be used
+    set enc [Modal::ask_for_encoding [encoding system]]
+    if {$enc != [encoding system]} {
+      chan seek $fid 0
+      chan configure $fid -encoding iso8859-1
+      if {[catch {set data [chan read $fid]} msg]} {
+        chan close $fid
+        return 1
+      }
+    } else {
+      return 1
+    }
+  }
+  chan close $fid
+  set text [tEdit::NewTab [.nb index current] $filename $enc]
+  $text insert end $data
   $text mark set insert 0.0
   $text see insert
   $text edit modified 0
@@ -312,14 +429,15 @@ proc tEdit::SaveFile {filename text} {
       return 2
     }
   }
-  if {[catch {set data [open $filename w]} msg]} {
+  if {[catch {set fid [open $filename w]} msg]} {
     puts stderr $msg
     ::tEdit::Message [lindex [split $msg ":"] 1]
     return 1
   }
-  chan puts -nonewline $data [$text get 0.0 end]
-  chan flush $data
-  chan close $data
+  chan configure $fid -encoding $::tEdit::enc($text)
+  chan puts -nonewline $fid [$text get 0.0 end]
+  chan flush $fid
+  chan close $fid
   $text edit modified 0
   ::tEdit::StoreFilename $filename
   ::tEdit::RecentAdd $filename
@@ -1100,6 +1218,7 @@ proc tEdit::FocusTab {tab} {
   set text "${tab}.text"
   ::tEdit::UndoStack $text
   ::tEdit::Modified $text
+  set ::tEdit::encoding $::tEdit::enc($text)
   # set "Unfold all" menu state
   .menu.edit entryconfigure "Unfold All" \
     -state [expr {$::tEdit::folds($text) eq "" ? "disabled" : "normal"}]
