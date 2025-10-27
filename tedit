@@ -348,7 +348,7 @@ proc tEdit::OpenFile {filename} {
     set enc [Modal::ask_for_encoding [encoding system]]
     if {$enc != [encoding system]} {
       chan seek $fid 0
-      chan configure $fid -encoding iso8859-1
+      chan configure $fid -encoding $enc
       if {[catch {set data [chan read -nonewline $fid]} msg]} {
         chan close $fid
         return 1
@@ -424,7 +424,25 @@ proc tEdit::SaveFile {filename text} {
     return 1
   }
   chan configure $fid -encoding $::tEdit::enc($text)
-  chan puts -nonewline $fid [$text get 0.0 end]
+  if {[catch {chan puts -nonewline $fid [$text get 0.0 end]} msg]} {
+    # can't write! some symbols don't fit with current encoding
+    set enc [Modal::ask_for_encoding $::tEdit::enc($text)]
+    if {$enc != $::tEdit::enc($text)} {
+      chan seek $fid 0
+      chan configure $fid -encoding $enc
+      if {[catch {chan puts -nonewline $fid [$text get 0.0 end]} msg]} {
+        chan close $fid
+        ::tEdit::Message "[file tail $filename] not saved! (wrong encoding)"
+        return 1
+      }
+      set ::tEdit::enc($text) $enc
+      set ::tEdit::encoding $enc
+    } else {
+      ::tEdit::Message "[file tail $filename] not saved! (wrong encoding)"
+      chan close $fid
+      return 1
+    }
+  }
   chan flush $fid
   chan close $fid
   $text edit modified 0
