@@ -67,6 +67,7 @@ namespace eval tEdit {
   variable theme       [ttk::style theme use]
   variable tabsize     2
   variable softtabs    {true}
+  variable rootdirs    {}
 
   namespace eval DnD {
     variable timer {}
@@ -367,6 +368,13 @@ proc tEdit::OpenFile {filename} {
   ::tEdit::RecentAdd $filename
 }
 
+proc ::tEdit::OpenDirectory {} {
+  set dirname [tk_chooseDirectory -title "Open Directory" -parent . \
+    -mustexist true]
+  if {$dirname eq ""} {return 2}
+  StartBrowser $dirname
+}
+
 proc tEdit::GetPipedData {} {
   chan event stdin readable {}
   set data ""
@@ -530,11 +538,22 @@ proc tEdit::PopulateBrowser {node {tree ".tree"}} {
   }
 }
 
-proc tEdit::StartBrowser {{tree ".tree"}} {
-  foreach dir [lsort -dictionary [file volumes]] {
-    ::tEdit::PopulateBrowser [$tree insert {} end -text $dir \
-      -values [list $dir directory]] $tree
+proc tEdit::StartBrowser {dirname {tree ".tree"}} {
+  variable rootdirs
+  
+  set dirname [file normalize $dirname]
+  # check if the directory was not registered before
+  foreach dir $rootdirs {
+    if {$dir == $dirname} {
+      return
+    }
   }
+  
+  # it was not, so append it to the list of root directories
+  lappend rootdirs $dirname
+
+  ::tEdit::PopulateBrowser [$tree insert {} end -text [file tail $dirname] \
+    -tags rootdir -values [list $dirname directory]] $tree
 }
 
 proc tEdit::OpenFileBrowser {node {tree ".tree"}} {
@@ -1379,6 +1398,9 @@ proc tEdit::Menus {} {
     .menu.file add command -label "Save As..." -underline 5 \
       -accelerator "Ctrl+Shift+S" -command {tEdit::SaveAs [.nb select].text}
     .menu.file add separator
+      .menu.file add command -label "Open Directory" -underline 5 \
+        -accelerator "Ctrl+D" -command {tEdit::OpenDirectory}
+    .menu.file add separator
       .menu.file add cascade -label "Recent Files" -underline 0 \
         -state disabled -menu [menu .menu.file.recent]
     .menu.file add separator
@@ -1582,6 +1604,10 @@ proc tEdit::Menus {} {
       -accelerator "Ctrl+C" -command {event generate [focus] <<Copy>>}
     .menucbx add command -label "Paste" -underline 0 \
       -accelerator "Ctrl+V" -command {event generate [focus] <<Paste>>}
+  
+  # popup menu for file browser
+  menu .menubrwsr
+    .menubrwsr add command -label "Remove Dir" -underline 2 
 }
 
 ################################################################################
@@ -1766,6 +1792,7 @@ proc tEdit::Bindings {} {
   bind all <Control-o>  {.menu.file invoke "Open..."}
   bind all <Control-s>  {.menu.file invoke "Save"}
   bind all <Control-S>  {.menu.file invoke "Save As..."}
+  bind all <Control-d>  {.menu.file invoke "Open Directory"}
   bind all <Control-q>  {.menu.file invoke "Close All"}
   bind all <Control-Q>  {.menu.file invoke "Exit"}
   bind all <Control-f>  {.menu.search invoke "Show Search"}
@@ -1791,6 +1818,11 @@ proc tEdit::Bindings {} {
     bind .tree $keysym {tEdit::OpenFileBrowser [%W focus] %W}
   }
   bind .tree <<TreeviewOpen>> {tEdit::PopulateBrowser [%W focus] %W}
+  .tree tag bind rootdir <3> {
+    focus %W
+    .menubrwsr entryconfigure 0 -command [list %W delete [%W identify item %x %y]]
+    tk_popup .menubrwsr %X %Y
+  }
 
   # notebook bindings
   # on tab change reload user settings (except font and line numbering)
@@ -1833,7 +1865,7 @@ proc tEdit::Bindings {} {
 tEdit::Widgets
 tEdit::Menus
 tEdit::Bindings
-tEdit::StartBrowser
+#tEdit::StartBrowser
 
 # window manager instructions
 wm title    . "tEdit"
@@ -1855,6 +1887,9 @@ if {$::argc > 0} {
   if {[llength [.nb tabs]] == 0} {exit 1}
 } else {
   tEdit::NewTab
+}
+if {[pwd] != [file home]} {
+  tEdit::StartBrowser [pwd]
 }
 # get input from OS pipe (stdout)
 chan event stdin readable {tEdit::GetPipedData}
