@@ -1258,8 +1258,8 @@ proc tEdit::FocusTab {tab} {
   set ::tEdit::message ""
   set ::tEdit::filepath [file nativename $::tEdit::filename($tab)]
   set text "${tab}.text"
-  ::tEdit::UndoStack $text
-  ::tEdit::Modified $text
+  tEdit::UndoStack $text
+  tEdit::Modified $text
   set ::tEdit::encoding $::tEdit::enc($text)
   # set "Unfold all" menu state
   .menu.edit entryconfigure "Unfold All" \
@@ -1270,6 +1270,7 @@ proc tEdit::FocusTab {tab} {
     .menu.marks entryconfigure $item \
       -state [expr {$::tEdit::marks($text) eq "" ? "disabled" : "normal"}]
   }
+  tEdit::CursorUpdate $text
 }
 
 proc tEdit::TabsMenu {W x y X Y} {
