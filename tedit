@@ -68,7 +68,8 @@ namespace eval tEdit {
   variable tabsize     2
   variable softtabs    {true}
   variable rootdirs    {}
-
+  variable cursorpos   {1:0}
+  
   namespace eval DnD {
     variable timer {}
     variable start {}
@@ -302,6 +303,13 @@ proc tEdit::NewTab {{position ""} {filename ""} {enc utf-8}} {
   ::tEdit::TabOptions new $tab(tab)
   $nb select $tab(tab)
   focus $tab(text)
+  
+  bindtags $tab(text) [linsert [bindtags $tab(text)] 2 PostFormat]
+  
+  bind PostFormat <Key> "::tEdit::CursorUpdate %W"
+  bind PostFormat <ButtonRelease-1> "::tEdit::CursorUpdate %W"
+  bind PostFormat <ButtonRelease-2> "::tEdit::CursorUpdate %W"
+
   return $tab(text)
 }
 
@@ -723,15 +731,22 @@ proc tEdit::AutoIndent {text} {
       %W insert insert "\n${whitespace}"
       # if necessary, scroll the view so cursor is visible
       %W see insert
+      tEdit::CursorUpdate %W
       break
     }
   } else {
     bind $text <Return> {
       %W insert insert "\n"
       %W see insert
+      tEdit::CursorUpdate %W
       break
     }
   }
+}
+
+proc tEdit::CursorUpdate {text} {
+	lassign [split [$text index insert] .] r c
+	set ::tEdit::cursorpos "$r:$c "
 }
 
 proc tEdit::Calculate {text} {
@@ -1720,14 +1735,16 @@ proc tEdit::Widgets {} {
       grid remove .lfreplace
 
   ttk::frame .statusbar -borderwidth 1 -relief sunken
+    ttk::label .cursorpos -width 8 -relief flat -anchor w -textvariable ::tEdit::cursorpos
     ttk::label .filepath -relief flat -anchor w -textvariable ::tEdit::filepath
     ttk::label .message  -relief flat -anchor c -textvariable ::tEdit::message
     ttk::label .encoding -relief flat -anchor e -textvariable ::tEdit::encoding
     ttk::sizegrip .sizegrip
-    grid .filepath -in .statusbar -row 0 -column 0 -sticky w
-    grid .message  -in .statusbar -row 0 -column 1 -sticky we
-    grid .encoding -in .statusbar -row 0 -column 2 -sticky e
-    grid .sizegrip -in .statusbar -row 0 -column 3 -sticky e
+    grid .cursorpos -in .statusbar -row 0 -column 0 -sticky w
+    grid .filepath -in .statusbar -row 0 -column 1 -sticky w
+    grid .message  -in .statusbar -row 0 -column 2 -sticky we
+    grid .encoding -in .statusbar -row 0 -column 3 -sticky e
+    grid .sizegrip -in .statusbar -row 0 -column 4 -sticky e
     grid columnconfigure .statusbar .message -weight 1
 
   grid .main      -in . -row 0 -column 0 -sticky nswe

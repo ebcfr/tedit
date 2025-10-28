@@ -32,16 +32,16 @@
 * Command Line Support
 * Load and save a file using encoding map different from the system and allow modifying the encoding used
 * File browser management in project mode like
+* display the cursor position
 * Runs in GNU/Linux, [Microsoft Windows](#for-microsoft-windows-users) and Unix (MacOS not tested)
 
 TO DO
 
-* display the cursor poition
 * ballon help for file names
 * rc file to store the configuration
 * optional ctags handling
-* syntax highlighting
-* drag and drop of files to open them
+* syntax highlighting?
+* drag and drop of files to open them?
 
 ----
 
